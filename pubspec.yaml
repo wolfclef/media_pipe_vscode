@@ -35,6 +35,15 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Local storage for face data
+  shared_preferences: ^2.3.3
+
+  # JSON serialization
+  json_annotation: ^4.9.0
+
+  # Web APIs (replaces dart:html in modern Flutter)
+  web: ^1.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -45,6 +54,10 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Code generation for JSON serialization
+  build_runner: ^2.4.13
+  json_serializable: ^6.8.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
