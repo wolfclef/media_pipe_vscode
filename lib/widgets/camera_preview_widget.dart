@@ -5,12 +5,12 @@ import 'dart:ui_web' as ui_web;
 
 class CameraPreviewWidget extends StatefulWidget {
   final web.HTMLVideoElement videoElement;
-  final String viewId;
+  final String? viewId;
 
   const CameraPreviewWidget({
     super.key,
     required this.videoElement,
-    required this.viewId,
+    this.viewId,
   });
 
   @override
@@ -18,18 +18,32 @@ class CameraPreviewWidget extends StatefulWidget {
 }
 
 class _CameraPreviewWidgetState extends State<CameraPreviewWidget> {
+  late final String _uniqueViewId;
+  bool _isRegistered = false;
+
   @override
   void initState() {
     super.initState();
+    // Generate unique view ID using timestamp to avoid conflicts
+    _uniqueViewId = widget.viewId ??
+        'video-element-${DateTime.now().millisecondsSinceEpoch}';
     _registerViewFactory();
   }
 
   void _registerViewFactory() {
-    // Register the video element as a platform view
-    ui_web.platformViewRegistry.registerViewFactory(
-      widget.viewId,
-      (int viewId) => widget.videoElement,
-    );
+    if (_isRegistered) return;
+
+    try {
+      // Register the video element as a platform view with unique ID
+      ui_web.platformViewRegistry.registerViewFactory(
+        _uniqueViewId,
+        (int viewId) => widget.videoElement,
+      );
+      _isRegistered = true;
+    } catch (e) {
+      // Ignore if already registered
+      debugPrint('View factory already registered: $_uniqueViewId');
+    }
   }
 
   @override
@@ -37,7 +51,7 @@ class _CameraPreviewWidgetState extends State<CameraPreviewWidget> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: HtmlElementView(
-        viewType: widget.viewId,
+        viewType: _uniqueViewId,
       ),
     );
   }

@@ -14,41 +14,71 @@ class CameraService {
   /// Start the camera and create video element
   Future<void> startCamera() async {
     try {
-      // Create video element
+      // Clean up any existing resources first
+      stopCamera();
+
+      // Create video element with all necessary attributes
       _videoElement = web.document.createElement('video') as web.HTMLVideoElement;
       _videoElement!.width = FaceRecognitionConstants.cameraWidth;
       _videoElement!.height = FaceRecognitionConstants.cameraHeight;
       _videoElement!.autoplay = true;
+      _videoElement!.playsInline = true; // Important for mobile
+      _videoElement!.muted = true; // Required for autoplay in some browsers
 
       // Request camera permission and get stream
       final mediaDevices = web.window.navigator.mediaDevices;
 
-      // Create constraints as a JS object
+      // Create constraints with ideal settings
       final constraints = <String, dynamic>{
         'video': {
-          'width': FaceRecognitionConstants.cameraWidth,
-          'height': FaceRecognitionConstants.cameraHeight,
+          'width': {'ideal': FaceRecognitionConstants.cameraWidth},
+          'height': {'ideal': FaceRecognitionConstants.cameraHeight},
           'facingMode': 'user',
         },
         'audio': false,
       }.jsify() as web.MediaStreamConstraints;
 
-      // Get user media
-      _stream = await mediaDevices.getUserMedia(constraints).toDart as web.MediaStream;
+      // Get user media with timeout
+      final streamFuture = mediaDevices.getUserMedia(constraints).toDart;
+      _stream = await streamFuture.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Camera initialization timeout');
+        },
+      ) as web.MediaStream;
 
       // Set video source
       _videoElement!.srcObject = _stream;
 
-      // Wait for video to be ready
+      // Wait for video to be ready with timeout
       final completer = Completer<void>();
-      _videoElement!.onLoadedMetadata.listen((_) {
-        _videoElement!.play();
-        completer.complete();
+      Timer? timeoutTimer;
+
+      final subscription = _videoElement!.onLoadedMetadata.listen((_) async {
+        timeoutTimer?.cancel();
+        try {
+          await _videoElement!.play().toDart;
+          completer.complete();
+        } catch (e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
+        }
+      });
+
+      // Set timeout
+      timeoutTimer = Timer(const Duration(seconds: 10), () {
+        subscription.cancel();
+        if (!completer.isCompleted) {
+          completer.completeError(TimeoutException('Video ready timeout'));
+        }
       });
 
       await completer.future;
       _isInitialized = true;
     } catch (e) {
+      // Clean up on error
+      stopCamera();
       throw Exception('Failed to start camera: $e');
     }
   }
@@ -56,16 +86,28 @@ class CameraService {
   /// Stop the camera and release resources
   void stopCamera() {
     if (_stream != null) {
-      final tracks = _stream!.getTracks();
-      final trackLength = tracks.length;
-      for (int i = 0; i < trackLength; i++) {
-        (tracks[i] as web.MediaStreamTrack).stop();
+      try {
+        final tracks = _stream!.getTracks();
+        final trackLength = tracks.length;
+        for (int i = 0; i < trackLength; i++) {
+          final track = tracks[i];
+          if (track != null) {
+            track.stop();
+          }
+        }
+      } catch (e) {
+        // Ignore errors during cleanup
       }
       _stream = null;
     }
 
     if (_videoElement != null) {
-      _videoElement!.srcObject = null;
+      try {
+        _videoElement!.srcObject = null;
+        _videoElement!.pause();
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
       _videoElement = null;
     }
 

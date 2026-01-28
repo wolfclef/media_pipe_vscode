@@ -3,30 +3,9 @@ import 'dart:js_interop_unsafe';
 import 'package:web/web.dart' as web;
 import '../utils/constants.dart';
 
-// JS Interop bindings for MediaPipe
-@JS('FaceLandmarker')
-@staticInterop
-class JSFaceLandmarker {}
-
-extension JSFaceLandmarkerExtension on JSFaceLandmarker {
-  external JSObject detect(web.HTMLVideoElement video);
-  external void close();
-}
-
-// Static constructor method for FaceLandmarker
-@JS('FaceLandmarker.createFromOptions')
-external JSPromise _createFaceLandmarkerFromOptions(
-  JSObject visionFilesetResolver,
-  JSObject options,
-);
-
-@JS('FilesetResolver')
-@staticInterop
-class JSFilesetResolver {}
-
-// Static method for FilesetResolver
-@JS('FilesetResolver.forVisionTasks')
-external JSPromise _filesetResolverForVisionTasks(JSString wasmPath);
+// Access the global window object to get MediaPipe classes
+@JS()
+external JSObject get window;
 
 // Dart wrapper classes
 class FaceLandmark {
@@ -41,7 +20,7 @@ class FaceLandmark {
 }
 
 class MediaPipeService {
-  JSFaceLandmarker? _faceLandmarker;
+  JSObject? _faceLandmarker;
   bool _isInitialized = false;
 
   bool get isInitialized => _isInitialized;
@@ -49,12 +28,25 @@ class MediaPipeService {
   /// Initialize MediaPipe Face Landmarker
   Future<void> initialize() async {
     try {
-      // Load WASM files
-      final filesetResolver = await _filesetResolverForVisionTasks(
-        FaceRecognitionConstants.mediapipeWasmPath.toJS,
-      ).toDart;
+      // Wait for MediaPipe to load
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Create face landmarker with options using dynamic objects
+      // Access FilesetResolver from window
+      final filesetResolverClass = window.getProperty('FilesetResolver'.toJS) as JSObject;
+      final forVisionTasksMethod = filesetResolverClass.getProperty('forVisionTasks'.toJS) as JSFunction;
+
+      // Call forVisionTasks
+      final filesetResolverPromise = forVisionTasksMethod.callAsFunction(
+        filesetResolverClass,
+        FaceRecognitionConstants.mediapipeWasmPath.toJS,
+      ) as JSPromise;
+      final filesetResolver = await filesetResolverPromise.toDart as JSObject;
+
+      // Access FaceLandmarker from window
+      final faceLandmarkerClass = window.getProperty('FaceLandmarker'.toJS) as JSObject;
+      final createFromOptionsMethod = faceLandmarkerClass.getProperty('createFromOptions'.toJS) as JSFunction;
+
+      // Create options object
       final options = <String, dynamic>{
         'baseOptions': {
           'modelAssetPath': FaceRecognitionConstants.mediapipeModelUrl,
@@ -66,10 +58,13 @@ class MediaPipeService {
         'runningMode': 'VIDEO',
       }.jsify() as JSObject;
 
-      _faceLandmarker = await _createFaceLandmarkerFromOptions(
-        filesetResolver as JSObject,
+      // Call createFromOptions
+      final faceLandmarkerPromise = createFromOptionsMethod.callAsFunction(
+        faceLandmarkerClass,
+        filesetResolver,
         options,
-      ).toDart as JSFaceLandmarker;
+      ) as JSPromise;
+      _faceLandmarker = await faceLandmarkerPromise.toDart as JSObject;
 
       _isInitialized = true;
     } catch (e) {
@@ -84,7 +79,9 @@ class MediaPipeService {
     }
 
     try {
-      final result = _faceLandmarker!.detect(video);
+      // Call detect method
+      final detectMethod = _faceLandmarker!.getProperty('detect'.toJS) as JSFunction;
+      final result = detectMethod.callAsFunction(_faceLandmarker, video) as JSObject;
 
       // Access faceLandmarks property
       final faceLandmarksArray = result.getProperty('faceLandmarks'.toJS);
@@ -123,7 +120,10 @@ class MediaPipeService {
   /// Dispose of resources
   void dispose() {
     if (_faceLandmarker != null) {
-      _faceLandmarker!.close();
+      final closeMethod = _faceLandmarker!.getProperty('close'.toJS);
+      if (!closeMethod.isUndefinedOrNull) {
+        (closeMethod as JSFunction).callAsFunction(_faceLandmarker);
+      }
       _faceLandmarker = null;
     }
     _isInitialized = false;
