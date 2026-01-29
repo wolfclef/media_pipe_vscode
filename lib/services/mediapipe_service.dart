@@ -25,50 +25,82 @@ class MediaPipeService {
 
   bool get isInitialized => _isInitialized;
 
-  /// Initialize MediaPipe Face Landmarker
+  /// Initialize MediaPipe Face Landmarker with retry logic
   Future<void> initialize() async {
-    try {
-      // Wait for MediaPipe to load
-      await Future.delayed(const Duration(milliseconds: 500));
+    // Retry up to 5 times with 500ms intervals
+    for (int attempt = 0; attempt < 5; attempt++) {
+      try {
+        await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
 
-      // Access FilesetResolver from window
-      final filesetResolverClass = window.getProperty('FilesetResolver'.toJS) as JSObject;
-      final forVisionTasksMethod = filesetResolverClass.getProperty('forVisionTasks'.toJS) as JSFunction;
+        // Check if FilesetResolver is available
+        final filesetResolverClass = window.getProperty('FilesetResolver'.toJS);
+        if (filesetResolverClass == null || filesetResolverClass.isUndefinedOrNull) {
+          if (attempt == 4) {
+            throw Exception('MediaPipe library not loaded. FilesetResolver is undefined.');
+          }
+          continue; // Retry
+        }
 
-      // Call forVisionTasks
-      final filesetResolverPromise = forVisionTasksMethod.callAsFunction(
-        filesetResolverClass,
-        FaceRecognitionConstants.mediapipeWasmPath.toJS,
-      ) as JSPromise;
-      final filesetResolver = await filesetResolverPromise.toDart as JSObject;
+        final forVisionTasksMethod = (filesetResolverClass as JSObject).getProperty('forVisionTasks'.toJS);
+        if (forVisionTasksMethod == null || forVisionTasksMethod.isUndefinedOrNull) {
+          if (attempt == 4) {
+            throw Exception('FilesetResolver.forVisionTasks is undefined.');
+          }
+          continue; // Retry
+        }
 
-      // Access FaceLandmarker from window
-      final faceLandmarkerClass = window.getProperty('FaceLandmarker'.toJS) as JSObject;
-      final createFromOptionsMethod = faceLandmarkerClass.getProperty('createFromOptions'.toJS) as JSFunction;
+        // Call forVisionTasks
+        final filesetResolverPromise = (forVisionTasksMethod as JSFunction).callAsFunction(
+          filesetResolverClass,
+          FaceRecognitionConstants.mediapipeWasmPath.toJS,
+        ) as JSPromise;
+        final filesetResolver = await filesetResolverPromise.toDart as JSObject;
 
-      // Create options object
-      final options = <String, dynamic>{
-        'baseOptions': {
-          'modelAssetPath': FaceRecognitionConstants.mediapipeModelUrl,
-        },
-        'numFaces': 1,
-        'minFaceDetectionConfidence': 0.5,
-        'minFacePresenceConfidence': 0.5,
-        'minTrackingConfidence': 0.5,
-        'runningMode': 'VIDEO',
-      }.jsify() as JSObject;
+        // Check if FaceLandmarker is available
+        final faceLandmarkerClass = window.getProperty('FaceLandmarker'.toJS);
+        if (faceLandmarkerClass == null || faceLandmarkerClass.isUndefinedOrNull) {
+          if (attempt == 4) {
+            throw Exception('FaceLandmarker is undefined.');
+          }
+          continue; // Retry
+        }
 
-      // Call createFromOptions
-      final faceLandmarkerPromise = createFromOptionsMethod.callAsFunction(
-        faceLandmarkerClass,
-        filesetResolver,
-        options,
-      ) as JSPromise;
-      _faceLandmarker = await faceLandmarkerPromise.toDart as JSObject;
+        final createFromOptionsMethod = (faceLandmarkerClass as JSObject).getProperty('createFromOptions'.toJS);
+        if (createFromOptionsMethod == null || createFromOptionsMethod.isUndefinedOrNull) {
+          if (attempt == 4) {
+            throw Exception('FaceLandmarker.createFromOptions is undefined.');
+          }
+          continue; // Retry
+        }
 
-      _isInitialized = true;
-    } catch (e) {
-      throw Exception('Failed to initialize MediaPipe: $e');
+        // Create options object
+        final options = <String, dynamic>{
+          'baseOptions': {
+            'modelAssetPath': FaceRecognitionConstants.mediapipeModelUrl,
+          },
+          'numFaces': 1,
+          'minFaceDetectionConfidence': 0.5,
+          'minFacePresenceConfidence': 0.5,
+          'minTrackingConfidence': 0.5,
+          'runningMode': 'VIDEO',
+        }.jsify() as JSObject;
+
+        // Call createFromOptions
+        final faceLandmarkerPromise = (createFromOptionsMethod as JSFunction).callAsFunction(
+          faceLandmarkerClass,
+          filesetResolver,
+          options,
+        ) as JSPromise;
+        _faceLandmarker = await faceLandmarkerPromise.toDart as JSObject;
+
+        _isInitialized = true;
+        return; // Success
+      } catch (e) {
+        if (attempt == 4) {
+          throw Exception('Failed to initialize MediaPipe after 5 attempts: $e');
+        }
+        // Continue to next retry
+      }
     }
   }
 

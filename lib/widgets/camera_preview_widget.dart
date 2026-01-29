@@ -25,8 +25,7 @@ class _CameraPreviewWidgetState extends State<CameraPreviewWidget> {
   void initState() {
     super.initState();
     // Generate unique view ID using timestamp to avoid conflicts
-    _uniqueViewId = widget.viewId ??
-        'video-element-${DateTime.now().millisecondsSinceEpoch}';
+    _uniqueViewId = '${widget.viewId ?? 'video-element'}-${DateTime.now().microsecondsSinceEpoch}';
     _registerViewFactory();
   }
 
