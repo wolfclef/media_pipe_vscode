@@ -42,7 +42,7 @@ dependencies:
   json_annotation: ^4.9.0
 
   # Web APIs (replaces dart:html in modern Flutter)
-  web: ^1.1.0
+  web: ^0.5.1
 
 dev_dependencies:
   flutter_test:
