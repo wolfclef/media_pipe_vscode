@@ -34,11 +34,17 @@
 
   <!-- MediaPipe Tasks Vision library - Load as ES Module -->
   <script type="module">
-    import vision from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/+esm';
+    // Import MediaPipe and expose to global window object
+    import * as vision from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/+esm';
+
     // Expose to global window object for Dart interop
     window.FaceLandmarker = vision.FaceLandmarker;
     window.FilesetResolver = vision.FilesetResolver;
     window.DrawingUtils = vision.DrawingUtils;
+
+    // Signal that MediaPipe is loaded
+    window.mediaPipeLoaded = true;
+    console.log('MediaPipe loaded:', { FaceLandmarker: !!window.FaceLandmarker, FilesetResolver: !!window.FilesetResolver });
   </script>
 </head>
 <body>

@@ -28,18 +28,28 @@ class MediaPipeService {
 
   /// Initialize MediaPipe Face Landmarker with retry logic
   Future<void> initialize() async {
-    // Retry up to 5 times with 500ms intervals
-    for (int attempt = 0; attempt < 5; attempt++) {
+    // Retry up to 10 times with 500ms intervals (total 5 seconds max)
+    for (int attempt = 0; attempt < 10; attempt++) {
       try {
-        await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
+        await Future.delayed(const Duration(milliseconds: 500));
 
-        debugPrint('MediaPipe initialization attempt ${attempt + 1}/5');
+        debugPrint('MediaPipe initialization attempt ${attempt + 1}/10');
+
+        // Check if MediaPipe module is loaded
+        final mediaPipeLoaded = window.getProperty('mediaPipeLoaded'.toJS);
+        if (mediaPipeLoaded == null || mediaPipeLoaded.isUndefinedOrNull) {
+          debugPrint('MediaPipe module still loading...');
+          if (attempt == 9) {
+            throw Exception('MediaPipe module failed to load after 5 seconds');
+          }
+          continue; // Retry
+        }
 
         // Check if FilesetResolver is available
         final filesetResolverClass = window.getProperty('FilesetResolver'.toJS);
         if (filesetResolverClass == null || filesetResolverClass.isUndefinedOrNull) {
           debugPrint('FilesetResolver is undefined, retrying...');
-          if (attempt == 4) {
+          if (attempt == 9) {
             throw Exception('MediaPipe library not loaded. FilesetResolver is undefined.');
           }
           continue; // Retry
@@ -49,7 +59,7 @@ class MediaPipeService {
 
         final forVisionTasksMethod = (filesetResolverClass as JSObject).getProperty('forVisionTasks'.toJS);
         if (forVisionTasksMethod == null || forVisionTasksMethod.isUndefinedOrNull) {
-          if (attempt == 4) {
+          if (attempt == 9) {
             throw Exception('FilesetResolver.forVisionTasks is undefined.');
           }
           continue; // Retry
@@ -65,7 +75,7 @@ class MediaPipeService {
         // Check if FaceLandmarker is available
         final faceLandmarkerClass = window.getProperty('FaceLandmarker'.toJS);
         if (faceLandmarkerClass == null || faceLandmarkerClass.isUndefinedOrNull) {
-          if (attempt == 4) {
+          if (attempt == 9) {
             throw Exception('FaceLandmarker is undefined.');
           }
           continue; // Retry
@@ -73,7 +83,7 @@ class MediaPipeService {
 
         final createFromOptionsMethod = (faceLandmarkerClass as JSObject).getProperty('createFromOptions'.toJS);
         if (createFromOptionsMethod == null || createFromOptionsMethod.isUndefinedOrNull) {
-          if (attempt == 4) {
+          if (attempt == 9) {
             throw Exception('FaceLandmarker.createFromOptions is undefined.');
           }
           continue; // Retry
@@ -102,8 +112,8 @@ class MediaPipeService {
         _isInitialized = true;
         return; // Success
       } catch (e) {
-        if (attempt == 4) {
-          throw Exception('Failed to initialize MediaPipe after 5 attempts: $e');
+        if (attempt == 9) {
+          throw Exception('Failed to initialize MediaPipe after 10 attempts: $e');
         }
         // Continue to next retry
       }
