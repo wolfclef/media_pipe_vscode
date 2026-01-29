@@ -1,5 +1,6 @@
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 import '../utils/constants.dart';
 
@@ -32,14 +33,19 @@ class MediaPipeService {
       try {
         await Future.delayed(Duration(milliseconds: 500 * (attempt + 1)));
 
+        debugPrint('MediaPipe initialization attempt ${attempt + 1}/5');
+
         // Check if FilesetResolver is available
         final filesetResolverClass = window.getProperty('FilesetResolver'.toJS);
         if (filesetResolverClass == null || filesetResolverClass.isUndefinedOrNull) {
+          debugPrint('FilesetResolver is undefined, retrying...');
           if (attempt == 4) {
             throw Exception('MediaPipe library not loaded. FilesetResolver is undefined.');
           }
           continue; // Retry
         }
+
+        debugPrint('FilesetResolver found');
 
         final forVisionTasksMethod = (filesetResolverClass as JSObject).getProperty('forVisionTasks'.toJS);
         if (forVisionTasksMethod == null || forVisionTasksMethod.isUndefinedOrNull) {
@@ -121,14 +127,17 @@ class MediaPipeService {
         return null;
       }
 
+      // Cast to JSObject once
+      final faceLandmarksArrayObj = faceLandmarksArray as JSObject;
+
       // Get length of array
-      final length = (faceLandmarksArray as JSObject).getProperty('length'.toJS) as JSNumber;
+      final length = faceLandmarksArrayObj.getProperty('length'.toJS) as JSNumber;
       if (length.toDartInt == 0) {
         return null;
       }
 
       // Get first face landmarks
-      final firstFace = (faceLandmarksArray as JSObject).getProperty(0.toJS) as JSObject;
+      final firstFace = faceLandmarksArrayObj.getProperty(0.toJS) as JSObject;
       final landmarksLength = (firstFace.getProperty('length'.toJS) as JSNumber).toDartInt;
 
       // Convert landmarks to Dart list

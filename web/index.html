@@ -33,9 +33,10 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- MediaPipe Tasks Vision library - Load before Flutter -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm/vision_bundle.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm/vision_bundle.js"></script>
 </head>
 <body>
+  <!-- Load Flutter after MediaPipe is ready -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
