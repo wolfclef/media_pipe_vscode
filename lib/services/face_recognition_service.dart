@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/face_data.dart';
 import '../services/face_storage_service.dart';
 import '../services/mediapipe_service.dart';
@@ -28,12 +29,17 @@ class FaceRecognitionService {
     // Extract embeddings from detected face
     final embeddings = extractEmbeddings(landmarks);
 
+    debugPrint('🔍 Recognizing face - embeddings length: ${embeddings.length}');
+
     // Get all stored faces
     final storedFaces = await _storageService.getAllFaces();
 
     if (storedFaces.isEmpty) {
+      debugPrint('❌ No stored faces found');
       return null;
     }
+
+    debugPrint('📊 Comparing with ${storedFaces.length} stored face(s)');
 
     // Find best match
     double bestScore = 0.0;
@@ -46,11 +52,15 @@ class FaceRecognitionService {
         storedFace.embeddings,
       );
 
+      debugPrint('   ${storedFace.userName}: ${(similarity * 100).toStringAsFixed(2)}%');
+
       if (similarity > bestScore) {
         bestScore = similarity;
         bestMatch = storedFace;
       }
     }
+
+    debugPrint('✨ Best match: ${bestMatch?.userName} with ${(bestScore * 100).toStringAsFixed(2)}% (threshold: ${(FaceRecognitionConstants.matchThreshold * 100).toStringAsFixed(0)}%)');
 
     // Return match only if above threshold
     if (bestScore >= FaceRecognitionConstants.matchThreshold) {

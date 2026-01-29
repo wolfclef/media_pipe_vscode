@@ -232,6 +232,7 @@ class _RecognitionScreenState extends State<RecognitionScreen> {
                         FaceRecognitionConstants.cameraWidth.toDouble(),
                         FaceRecognitionConstants.cameraHeight.toDouble(),
                       ),
+                      showLandmarks: true, // 랜드마크 표시
                     ),
                   ),
                 ),

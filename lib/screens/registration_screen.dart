@@ -201,6 +201,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         FaceRecognitionConstants.cameraWidth.toDouble(),
                         FaceRecognitionConstants.cameraHeight.toDouble(),
                       ),
+                      showLandmarks: true, // 랜드마크 표시
                     ),
                   ),
                 ),
