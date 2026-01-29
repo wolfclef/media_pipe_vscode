@@ -127,9 +127,16 @@ class MediaPipeService {
     }
 
     try {
-      // Call detect method
-      final detectMethod = _faceLandmarker!.getProperty('detect'.toJS) as JSFunction;
-      final result = detectMethod.callAsFunction(_faceLandmarker, video) as JSObject;
+      // VIDEO mode requires timestamp parameter
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+      // Call detectForVideo method (required for VIDEO mode)
+      final detectMethod = _faceLandmarker!.getProperty('detectForVideo'.toJS) as JSFunction;
+      final result = detectMethod.callAsFunction(
+        _faceLandmarker,
+        video,
+        timestamp.toJS,
+      ) as JSObject;
 
       // Access faceLandmarks property
       final faceLandmarksArray = result.getProperty('faceLandmarks'.toJS);
