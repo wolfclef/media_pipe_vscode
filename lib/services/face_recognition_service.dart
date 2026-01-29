@@ -9,18 +9,35 @@ class FaceRecognitionService {
   final FaceStorageService _storageService = FaceStorageService();
 
   /// Extract face embeddings from MediaPipe landmarks
-  /// Converts 478 landmarks (x, y, z) into a 1434-dimensional normalized vector
+  /// Converts 478 landmarks (x, y, z) into a normalized vector
   List<double> extractEmbeddings(List<FaceLandmark> landmarks) {
     // Flatten landmarks into a single vector
     final features = <double>[];
+
+    // Calculate face center for normalization
+    double centerX = 0, centerY = 0, centerZ = 0;
     for (final landmark in landmarks) {
-      features.add(landmark.x);
-      features.add(landmark.y);
-      features.add(landmark.z);
+      centerX += landmark.x;
+      centerY += landmark.y;
+      centerZ += landmark.z;
+    }
+    centerX /= landmarks.length;
+    centerY /= landmarks.length;
+    centerZ /= landmarks.length;
+
+    // Extract features relative to face center (더 robust한 표현)
+    for (final landmark in landmarks) {
+      features.add(landmark.x - centerX);
+      features.add(landmark.y - centerY);
+      features.add(landmark.z - centerZ);
     }
 
     // Normalize the vector using L2 normalization
-    return MathUtils.normalizeVector(features);
+    final normalized = MathUtils.normalizeVector(features);
+
+    debugPrint('📏 Embeddings - landmarks: ${landmarks.length}, features: ${features.length}, normalized magnitude: ${MathUtils.vectorMagnitude(normalized).toStringAsFixed(6)}');
+
+    return normalized;
   }
 
   /// Recognize a face from landmarks
@@ -30,6 +47,7 @@ class FaceRecognitionService {
     final embeddings = extractEmbeddings(landmarks);
 
     debugPrint('🔍 Recognizing face - embeddings length: ${embeddings.length}');
+    debugPrint('   Current embedding sample: [${embeddings.take(5).map((e) => e.toStringAsFixed(4)).join(", ")}...]');
 
     // Get all stored faces
     final storedFaces = await _storageService.getAllFaces();
@@ -46,6 +64,8 @@ class FaceRecognitionService {
     FaceData? bestMatch;
 
     for (final storedFace in storedFaces) {
+      debugPrint('   Stored ${storedFace.userName} embedding sample: [${storedFace.embeddings.take(5).map((e) => e.toStringAsFixed(4)).join(", ")}...]');
+
       // Calculate cosine similarity
       final similarity = MathUtils.cosineSimilarity(
         embeddings,
@@ -81,6 +101,8 @@ class FaceRecognitionService {
   }) async {
     // Extract embeddings
     final embeddings = extractEmbeddings(landmarks);
+
+    debugPrint('💾 Registering $userName - embedding sample: [${embeddings.take(5).map((e) => e.toStringAsFixed(4)).join(", ")}...]');
 
     // Create face data
     final faceData = FaceData(

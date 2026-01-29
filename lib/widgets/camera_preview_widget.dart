@@ -49,8 +49,13 @@ class _CameraPreviewWidgetState extends State<CameraPreviewWidget> {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: HtmlElementView(
-        viewType: _uniqueViewId,
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()
+          ..rotateY(3.14159), // 좌우 반전 (거울 모드) - 180도 Y축 회전
+        child: HtmlElementView(
+          viewType: _uniqueViewId,
+        ),
       ),
     );
   }
