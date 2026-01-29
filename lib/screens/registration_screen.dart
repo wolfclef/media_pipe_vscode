@@ -176,33 +176,41 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         Expanded(
           child: Stack(
             children: [
-              // Camera preview
+              // Camera preview with overlay (mirrored together)
               if (_cameraService.videoElement != null)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: FaceRecognitionConstants.cameraWidth /
-                        FaceRecognitionConstants.cameraHeight,
-                    child: CameraPreviewWidget(
-                      videoElement: _cameraService.videoElement!,
-                      viewId: 'camera-registration',
-                    ),
-                  ),
-                ),
-
-              // Face overlay
-              if (_cameraService.videoElement != null)
-                Center(
-                  child: AspectRatio(
-                    aspectRatio: FaceRecognitionConstants.cameraWidth /
-                        FaceRecognitionConstants.cameraHeight,
-                    child: FaceOverlayWidget(
-                      landmarks: _currentLandmarks,
-                      videoSize: Size(
-                        FaceRecognitionConstants.cameraWidth.toDouble(),
-                        FaceRecognitionConstants.cameraHeight.toDouble(),
+                Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()..rotateY(3.14159),
+                  child: Stack(
+                    children: [
+                      // Camera preview
+                      Center(
+                        child: AspectRatio(
+                          aspectRatio: FaceRecognitionConstants.cameraWidth /
+                              FaceRecognitionConstants.cameraHeight,
+                          child: CameraPreviewWidget(
+                            videoElement: _cameraService.videoElement!,
+                            viewId: 'camera-registration',
+                          ),
+                        ),
                       ),
-                      showLandmarks: true, // 랜드마크 표시
-                    ),
+
+                      // Face overlay
+                      Center(
+                        child: AspectRatio(
+                          aspectRatio: FaceRecognitionConstants.cameraWidth /
+                              FaceRecognitionConstants.cameraHeight,
+                          child: FaceOverlayWidget(
+                            landmarks: _currentLandmarks,
+                            videoSize: Size(
+                              FaceRecognitionConstants.cameraWidth.toDouble(),
+                              FaceRecognitionConstants.cameraHeight.toDouble(),
+                            ),
+                            showLandmarks: true, // 랜드마크 표시
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
 
